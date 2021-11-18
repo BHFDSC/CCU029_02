@@ -1,6 +1,4 @@
-What are the predicted number of hospital and paediatric intensive care beds for children in England over 2021, based on a range of rates of COVID-19 and child risk profiles? 
-
-# Project name
+# What are the predicted number of hospital and paediatric intensive care beds for children in England over 2021, based on a range of rates of COVID-19 and child risk profiles? 
 
 ## Project description
 
