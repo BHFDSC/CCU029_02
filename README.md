@@ -1,4 +1,4 @@
-# What are the predicted number of hospital and paediatric intensive care beds for children in England over 2021, based on a range of rates of COVID-19 and child risk profiles? 
+# How do the characteristics of first ascertained SARS-CoV-2 related hospital admissions and the children admitted vary over time related to the pandemic waves of SARS-CoV-2? 
 
 ## Project description
 
@@ -7,15 +7,14 @@ Description will be added here.
 ## How to cite this work
 > Citation details to follow
 
-## Code
+## Contents
 
-Click [here](https://github.com/BHFDSC/CCU029_03/tree/main/code) to view the analysis code.
-
-Phenotyping algorithms and codelists are available [here](https://github.com/BHFDSC/CCU029_03/tree/main/phenotypes)
+* [View the analysis code used in NHS England's SDE for England](https://github.com/BHFDSC/CCU029_02/tree/main/code)
+* [View the phenotyping algorithms and codelists used in NHS England's SDE for England](https://github.com/BHFDSC/CCU029_02/tree/main/phenotypes)
 
 ## Project approval
 
-This is a sub-project of [project CCU029](https://github.com/BHFDSC/CCU029) approved by the CVD-COVID-UK / COVID-IMPACT Approvals & Oversight Board (sub-project: CCU029_03).
+This is a sub-project of [project CCU029](https://github.com/BHFDSC/CCU029) approved by the CVD-COVID-UK / COVID-IMPACT Approvals & Oversight Board (sub-project: CCU029_02).
 
 ## License
 
