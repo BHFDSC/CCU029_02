@@ -16,9 +16,9 @@ unpack_config(config)
 # COMMAND ----------
 
 try:
-  test
+    test
 except:
-  test = True
+    test = True
 
 # COMMAND ----------
 
@@ -26,28 +26,28 @@ spark.sql("set spark.sql.legacy.timeParserPolicy=LEGACY")
 
 # COMMAND ----------
 
-input_table_name=f"{preamble}_{admissions_output_table_name}"
-output_table_name=f"{preamble}_{admissions_w_icu_output_table_name}"
+input_table_name = f"{preamble}_{admissions_output_table_name}"
+output_table_name = f"{preamble}_{admissions_w_icu_output_table_name}"
 
 # COMMAND ----------
 
 # # 1. Create ICU admission flag
 
 # **HES CC**
-# > Critical Care is a subset of APC data. It consists of Adult Critical Care from 2008-09 onwards (patients treated on adult critical care units), with Neonatal and Paediatric Critical Care included from 2017-18.   
-# > The field Critical Care Period Type (CCPERTYPE) can be used to differentiate between the different types of critical care record.  
-# > Each adult CC record represents a critical care period (from admission to a critical care location to discharge from that location).  
-# > Each neonatal and paediatric CC record represents a calendar day (or part thereof) of neonatal or paediatric critical care.  
+# > Critical Care is a subset of APC data. It consists of Adult Critical Care from 2008-09 onwards (patients treated on adult critical care units), with Neonatal and Paediatric Critical Care included from 2017-18.
+# > The field Critical Care Period Type (CCPERTYPE) can be used to differentiate between the different types of critical care record.
+# > Each adult CC record represents a critical care period (from admission to a critical care location to discharge from that location).
+# > Each neonatal and paediatric CC record represents a calendar day (or part thereof) of neonatal or paediatric critical care.
 
 
-# **CCPERTYPE: Critical Care Period Type**  
-# 01 = Adult (adult facilities, patients >= 19 years old on admission predominate)  
-# 02 = Paediatric (children and young people facilities, patients ? 29 days to <19 years predominate)  
-# 03 = Neonatal (neonatal facilities, patients <29 days on admission predominate)  
-  
-# **BESTMATCH**  
-# > A flag stating whether the row represents the best match between the critical care and episode start and end dates for this critical care period. This flag is used to limit the data in instances where there is more than one row per critical care period. See Appendix C in the Critical Care 2008-09 publication for further details.  
-# Value:  
+# **CCPERTYPE: Critical Care Period Type**
+# 01 = Adult (adult facilities, patients >= 19 years old on admission predominate)
+# 02 = Paediatric (children and young people facilities, patients ? 29 days to <19 years predominate)
+# 03 = Neonatal (neonatal facilities, patients <29 days on admission predominate)
+
+# **BESTMATCH**
+# > A flag stating whether the row represents the best match between the critical care and episode start and end dates for this critical care period. This flag is used to limit the data in instances where there is more than one row per critical care period. See Appendix C in the Critical Care 2008-09 publication for further details.
+# Value:
 # * Y or 1 = Row represents the best match between the critical care and episode dates
 # * N or NULL = Row doesn?t represent the best match between the critical care and episode date
 
@@ -55,7 +55,8 @@ output_table_name=f"{preamble}_{admissions_w_icu_output_table_name}"
 
 # COMMAND ----------
 
-cohort_ICU = spark.sql(f"""
+cohort_ICU = spark.sql(
+    f"""
 SELECT icu.ICU, cohort.*
 FROM {collab_database}.{input_table_name} as cohort
 LEFT JOIN (
@@ -80,10 +81,11 @@ LEFT JOIN (
     AND (cc.CCSTARTDATE <= cohort_ids.DISDATE OR cohort_ids.DISDATE IS NULL)
 ) as icu
 ON cohort.PERSON_ID_DEID = icu.PERSON_ID_DEID AND cohort.ADMIDATE = icu.ADMIDATE
-""")
+"""
+)
 
 if test:
-  display(cohort_ICU)
+    display(cohort_ICU)
 
 print("Defining ICU Treatments...")
 
@@ -92,8 +94,8 @@ print("Defining ICU Treatments...")
 # # 2. ICU Treatments
 
 # Uses Critical Care Activity Codes (`CCACTCODEn`)
-# >A type of critical care activity provided to a patient during a critical care period. Up to 20 activity codes can be submitted on each daily neonatal/paediatric critical care record.  
-  
+# >A type of critical care activity provided to a patient during a critical care period. Up to 20 activity codes can be submitted on each daily neonatal/paediatric critical care record.
+
 # The dictionary to decode these is created in [`~/CCU029/auxiliary/lookups/CCACTODE`](https://db.core.data.digital.nhs.uk/#notebook/5445633/command/5445666) and stored in `dars_nic_391419_j3w9t_collab.ccu029_lkp_ccactcode`
 
 # Plan:
@@ -111,13 +113,15 @@ print("Defining ICU Treatments...")
 import pyspark.sql.functions as f
 
 # Load HES CC where admissions in PICU or NICU (CCPERTYPE = 2 | 3)
-cc = spark.sql(f"""
+cc = spark.sql(
+    f"""
 SELECT *
 FROM {collab_database}.ccu029_manually_compiled_hes_cc
 WHERE 
   (CCPERTYPE = 2 OR CCPERTYPE = 3)
   AND BESTMATCH = 1
-""")
+"""
+)
 
 # Get CCACTCODEn cols (Thanks to Jake Kasan at NHS Digital for nice regex pivot script)
 CCACTCODE_fields = [c for c in cc.columns if c.startswith("CCACTCODE")]
@@ -127,25 +131,28 @@ CCACTCODE_columns = f.array(*(f.struct(f.col(c).alias("value"), f.lit(n).alias("
 
 # Pivot
 ccact_skinny = (
-  cc
-  .select("PERSON_ID_DEID",
-          f.to_date(f.col("CCACTIVDATE"), "yyyyMMdd").alias("CCACTIVDATE"),
-          f.explode(CCACTCODE_columns).alias("CCACTCODE"))
-  .selectExpr("PERSON_ID_DEID", "CCACTIVDATE", "CCACTCODE.value as CCACTCODE", "CCACTCODE.n as CCACTCODEn")
-  .filter("CCACTCODE IS NOT NULL")
-  .withColumn('value', f.lit(1))
+    cc.select(
+        "PERSON_ID_DEID",
+        f.to_date(f.col("CCACTIVDATE"), "yyyyMMdd").alias("CCACTIVDATE"),
+        f.explode(CCACTCODE_columns).alias("CCACTCODE"),
+    )
+    .selectExpr("PERSON_ID_DEID", "CCACTIVDATE", "CCACTCODE.value as CCACTCODE", "CCACTCODE.n as CCACTCODEn")
+    .filter("CCACTCODE IS NOT NULL")
+    .withColumn("value", f.lit(1))
 )
 
 # Join onto custom dictionary
-lkp_CCACTCODE = spark.sql("SELECT CCACTCODE, Short as CCACTCODE_desc FROM dars_nic_391419_j3w9t_collab.ccu029_lkp_ccactcode")
-ccact_skinny = (ccact_skinny
-            .join(lkp_CCACTCODE, "CCACTCODE", "left")
-            # Use alias for ID to avoid duplication in join
-            .selectExpr("PERSON_ID_DEID as ID_hosp_CC", "CCACTIVDATE", "CCACTCODE_desc as CCACTCODE", "value")
-           )
+lkp_CCACTCODE = spark.sql(
+    "SELECT CCACTCODE, Short as CCACTCODE_desc FROM dars_nic_391419_j3w9t_collab.ccu029_lkp_ccactcode"
+)
+ccact_skinny = (
+    ccact_skinny.join(lkp_CCACTCODE, "CCACTCODE", "left")
+    # Use alias for ID to avoid duplication in join
+    .selectExpr("PERSON_ID_DEID as ID_hosp_CC", "CCACTIVDATE", "CCACTCODE_desc as CCACTCODE", "value")
+)
 
 if test:
-  display(ccact_skinny)
+    display(ccact_skinny)
 
 # COMMAND ----------
 
@@ -156,23 +163,31 @@ if test:
 
 # COMMAND ----------
 
-cohort_ids = spark.sql(f"""
+cohort_ids = spark.sql(
+    f"""
 SELECT
   PERSON_ID_DEID,
   ADMIDATE,
   DISDATE
 FROM
   {collab_database}.{input_table_name}
-""")
+"""
+)
 
-cc_cohort = (cohort_ids
-             .join(ccact_skinny, 
-                ((cohort_ids.PERSON_ID_DEID == ccact_skinny.ID_hosp_CC) & (ccact_skinny.CCACTIVDATE >= cohort_ids.ADMIDATE) & ((ccact_skinny.CCACTIVDATE <= cohort_ids.DISDATE) | cohort_ids.DISDATE.isNull())), 
-                # Use inner join at this stage
-                "inner")
-             # Keep date cols for visual inspection
-             .drop("ID_hosp_CC")
-         )
+cc_cohort = (
+    cohort_ids.join(
+        ccact_skinny,
+        (
+            (cohort_ids.PERSON_ID_DEID == ccact_skinny.ID_hosp_CC)
+            & (ccact_skinny.CCACTIVDATE >= cohort_ids.ADMIDATE)
+            & ((ccact_skinny.CCACTIVDATE <= cohort_ids.DISDATE) | cohort_ids.DISDATE.isNull())
+        ),
+        # Use inner join at this stage
+        "inner",
+    )
+    # Keep date cols for visual inspection
+    .drop("ID_hosp_CC")
+)
 
 # COMMAND ----------
 
@@ -181,6 +196,7 @@ cc_cohort = (cohort_ids
 # COMMAND ----------
 
 import numpy as np
+
 np.bool = np.bool_
 np.float = np.float_
 np.int = np.int_
@@ -189,18 +205,15 @@ np.int = np.int_
 
 import databricks.koalas as ks
 
-X = (cc_cohort
-     .drop("DISDATE", "CCACTIVDATE")
-     .to_koalas()
-     .pivot_table(
-       index=['PERSON_ID_DEID', 'ADMIDATE'], 
-       columns='CCACTCODE', 
-       values='value')
-     .fillna(0)
-     .reset_index()
-     .to_spark()
-     # Create an ICU definition from presence of CCACTCODEs
-     .withColumn('ICU_CCACTIV', f.lit(1))
+X = (
+    cc_cohort.drop("DISDATE", "CCACTIVDATE")
+    .to_koalas()
+    .pivot_table(index=["PERSON_ID_DEID", "ADMIDATE"], columns="CCACTCODE", values="value")
+    .fillna(0)
+    .reset_index()
+    .to_spark()
+    # Create an ICU definition from presence of CCACTCODEs
+    .withColumn("ICU_CCACTIV", f.lit(1))
 )
 
 # COMMAND ----------
@@ -212,11 +225,13 @@ X = (cc_cohort
 # COMMAND ----------
 
 sub_cohort_w_icu = (
-  cohort_ICU.select(["PERSON_ID_DEID", "ADMIDATE", "ICU"])
-  .join(X, ["PERSON_ID_DEID", "ADMIDATE"], "left")
-  .fillna(0, subset = X.schema.names + ["ICU"])
+    cohort_ICU.select(["PERSON_ID_DEID", "ADMIDATE", "ICU"])
+    .join(X, ["PERSON_ID_DEID", "ADMIDATE"], "left")
+    .fillna(0, subset=X.schema.names + ["ICU"])
 )
-cohort_w_icu = spark.sql(f"SELECT * FROM {collab_database}.{input_table_name}").join(sub_cohort_w_icu, ["PERSON_ID_DEID", "ADMIDATE"], "left")
+cohort_w_icu = spark.sql(f"SELECT * FROM {collab_database}.{input_table_name}").join(
+    sub_cohort_w_icu, ["PERSON_ID_DEID", "ADMIDATE"], "left"
+)
 
 print(f"Creating `{output_table_name}` with study start date == {study_start}")
 
@@ -239,5 +254,3 @@ print(f"`{output_table_name}` has {table.count()} rows and {len(table.columns)} 
 # MAGIC ORDER BY YEAR(ADMIDATE) DESC, MONTH(ADMIDATE) DESC
 
 # COMMAND ----------
-
-

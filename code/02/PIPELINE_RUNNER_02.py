@@ -48,7 +48,7 @@ test = False
 
 # COMMAND ----------
 
-# MAGIC %run ../common/Identify_All_Infections $config=config 
+# MAGIC %run ../common/Identify_All_Infections $config=config
 
 # COMMAND ----------
 

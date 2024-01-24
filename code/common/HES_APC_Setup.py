@@ -16,9 +16,9 @@ unpack_config(config)
 # COMMAND ----------
 
 try:
-  test
+    test
 except:
-  test = True
+    test = True
 
 # COMMAND ----------
 
@@ -35,7 +35,8 @@ admissions_output_table_name = f"{preamble}_{admissions_output_table_name}"
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_hes_apc_date_of_birth_fixed AS
 SELECT
   a.PERSON_ID_DEID,
@@ -62,16 +63,20 @@ LEFT JOIN (
   FROM {collab_database}.{preamble}_gdppr
   GROUP BY NHS_NUMBER_DEID
 ) c
-ON a.PERSON_ID_DEID = c.NHS_NUMBER_DEID""")
-spark.sql(f"""
+ON a.PERSON_ID_DEID = c.NHS_NUMBER_DEID"""
+)
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_hes_apc_disdate_fixed AS
 SELECT
   PERSON_ID_DEID,
   ADMIDATE,
   MAX(DISDATE) AS DISDATE
 FROM {collab_database}.{preamble}_hes_apc
-GROUP BY PERSON_ID_DEID, ADMIDATE""")
-spark.sql(f"""
+GROUP BY PERSON_ID_DEID, ADMIDATE"""
+)
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_hes_apc_fixed_per_person_demographics AS
 SELECT
   PERSON_ID_DEID,
@@ -94,8 +99,10 @@ FROM (
   DISTRIBUTE BY a.PERSON_ID_DEID
   SORT BY a.PERSON_ID_DEID, a.ADMIDATE DESC, COALESCE(b.LSOA, a.LSOA11), COALESCE(b.ETHNIC, a.ETHNOS), COALESCE(b.SEX, a.SEX), TRUST_CODE
 )
-GROUP BY PERSON_ID_DEID""")
-spark.sql(f"""
+GROUP BY PERSON_ID_DEID"""
+)
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_hes_apc_fixed_demographics AS
 SELECT
   a.PERSON_ID_DEID,
@@ -111,22 +118,27 @@ FROM {preamble}_hes_apc_disdate_fixed a
 INNER JOIN {preamble}_hes_apc_fixed_per_person_demographics b
 ON a.PERSON_ID_DEID = b.PERSON_ID_DEID
 INNER JOIN {preamble}_hes_apc_date_of_birth_fixed c
-ON a.PERSON_ID_DEID = c.PERSON_ID_DEID""")
+ON a.PERSON_ID_DEID = c.PERSON_ID_DEID"""
+)
 
 # COMMAND ----------
 
-print(f"Filtering HES APC to valid records occurring before the end of the study period ({study_end}) and after a reasonable start date ({hospitalisation_start_date}) for the pandemic...")
+print(
+    f"Filtering HES APC to valid records occurring before the end of the study period ({study_end}) and after a reasonable start date ({hospitalisation_start_date}) for the pandemic..."
+)
 
 # COMMAND ----------
 
-hes_apc_fixed_censored = spark.sql(f"""
+hes_apc_fixed_censored = spark.sql(
+    f"""
 SELECT
   *, DATEDIFF(DISDATE, ADMIDATE) + 1 as LENGTH_OF_STAY
 FROM {preamble}_hes_apc_fixed_demographics
 WHERE
   ADMIDATE {"BETWEEN '" + hospitalisation_start_date + "' AND '" + study_end + "'" if hospitalisation_start_date else "<= '" + study_end + "'"}
   AND (ADMIDATE <= DISDATE OR DISDATE IS NULL)
-""")
+"""
+)
 
 print(f"Creating `{hes_apc_demographics_table_name}` with study start date == {study_start}...")
 
@@ -144,7 +156,8 @@ print("Collapsing records into individual spells...")
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_hes_apc_annotated_episodes AS
 SELECT
   *,
@@ -155,7 +168,8 @@ SELECT
   CASE WHEN ADMIDATE >= '{pims_defn_date}' AND (DIAG_4_01 RLIKE 'U075' OR (DIAG_4_01 RLIKE 'M303|R65' AND DIAG_4_CONCAT NOT RLIKE '{pims_reject_code_statement}')) THEN 1 ELSE 0 END AS PIMS_PRIMARY_EPI_BY_CODE_OLD,
   CASE WHEN ADMIDATE >= '{pims_defn_date}' AND (DIAG_4_CONCAT RLIKE 'U075' OR (DIAG_4_CONCAT RLIKE 'M303|R65' AND DIAG_4_CONCAT NOT RLIKE '{pims_reject_code_statement}')) THEN 1 ELSE 0 END AS PIMS_EPI_BY_CODE_OLD,
   NULLIF(CONCAT_WS(',', DIAG_4_02, DIAG_4_03, DIAG_4_04, DIAG_4_05, DIAG_4_06, DIAG_4_07, DIAG_4_08, DIAG_4_09, DIAG_4_10, DIAG_4_11, DIAG_4_12, DIAG_4_13, DIAG_4_14, DIAG_4_15, DIAG_4_16, DIAG_4_17, DIAG_4_18, DIAG_4_19, DIAG_4_20), '') AS DIAG_4_SECONDARY
-FROM {collab_database}.{preamble}_hes_apc""")
+FROM {collab_database}.{preamble}_hes_apc"""
+)
 
 # COMMAND ----------
 
@@ -164,7 +178,8 @@ FROM {collab_database}.{preamble}_hes_apc""")
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_hes_apc_filtered_spells_raw AS
 SELECT
   a.*,
@@ -226,12 +241,14 @@ SELECT
 FROM {collab_database}.{hes_apc_demographics_table_name} a
 INNER JOIN (SELECT * FROM {preamble}_hes_apc_annotated_episodes DISTRIBUTE BY PERSON_ID_DEID SORT BY PERSON_ID_DEID, EPIORDER ASC) b
 ON a.PERSON_ID_DEID = b.PERSON_ID_DEID AND a.ADMIDATE = b.ADMIDATE
-GROUP BY a.PERSON_ID_DEID, a.ADMIDATE, a.DISDATE, a.DATE_OF_BIRTH, a.EVENT_AGE, a.SEX, a.ETHNIC, a.LSOA, a.TRUST_CODE, a.LENGTH_OF_STAY""")
+GROUP BY a.PERSON_ID_DEID, a.ADMIDATE, a.DISDATE, a.DATE_OF_BIRTH, a.EVENT_AGE, a.SEX, a.ETHNIC, a.LSOA, a.TRUST_CODE, a.LENGTH_OF_STAY"""
+)
 
 # COMMAND ----------
 
 # After converting to a spell-level dataset, calculate and derive a number of other variables using the newly collected spell-level information
-finished_spells = spark.sql(f"""
+finished_spells = spark.sql(
+    f"""
 SELECT
   a.*,
   -- OPERATIONAL CODES Presence of CPAP/NIV/IMV implies Oxygen:
@@ -255,7 +272,8 @@ LEFT JOIN (
   )
   GROUP BY LSOA_CODE_2011
 ) b
-ON a.LSOA = b.LSOA_CODE_2011""")
+ON a.LSOA = b.LSOA_CODE_2011"""
+)
 
 print(f"Creating `{admissions_output_table_name}` with study start date == {study_start}")
 

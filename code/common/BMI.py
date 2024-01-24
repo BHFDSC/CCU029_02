@@ -16,9 +16,9 @@ unpack_config(config)
 # COMMAND ----------
 
 try:
-  test
+    test
 except:
-  test = True
+    test = True
 
 # COMMAND ----------
 
@@ -35,31 +35,38 @@ cohort_best_weight_and_height_table_name = f"{preamble}_{cohort_best_weight_and_
 output_table_name = f"{preamble}_{cohort_w_bmi_output_table_name}"
 
 
-print("Subsetting GDPPR to only the records that fall within each person in the cohort's admission date and 2 years prior to it...")
+print(
+    "Subsetting GDPPR to only the records that fall within each person in the cohort's admission date and 2 years prior to it..."
+)
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_gdppr_subset AS
 SELECT b.LOOKBACK_DATE, a.*
 FROM {collab_database}.{preamble}_gdppr a
 INNER JOIN {collab_database}.{input_table_name} b
-ON a.NHS_NUMBER_DEID = b.PERSON_ID_DEID AND a.DATE BETWEEN ADD_MONTHS(b.LOOKBACK_DATE, -24) AND b.LOOKBACK_DATE""")
+ON a.NHS_NUMBER_DEID = b.PERSON_ID_DEID AND a.DATE BETWEEN ADD_MONTHS(b.LOOKBACK_DATE, -24) AND b.LOOKBACK_DATE"""
+)
 
 # COMMAND ----------
 
 # Lists are from OpenSAFELY, we will use these to identify weight and height data from the GDPPR subset defined above
-# 
+#
 # https://www.opencodelists.org/codelist/opensafely/weight-snomed/5459abc6/#full-list
-# 
+#
 # https://www.opencodelists.org/codelist/opensafely/height-snomed/3b4a3891/#full-list
 
 # COMMAND ----------
 
 import io
+
 import pandas as pd
 
-print(f"Generating `{cohort_codelist_weight_table_name}` and `{cohort_codelist_height_table_name}` to identify weight and height records in GDPPR...")
+print(
+    f"Generating `{cohort_codelist_weight_table_name}` and `{cohort_codelist_height_table_name}` to identify weight and height records in GDPPR..."
+)
 
 weight_snomed = """
 code,term
@@ -109,7 +116,8 @@ print("Creating weight and height tables for the cohort...")
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_all_weights AS
 SELECT
   NHS_NUMBER_DEID,
@@ -122,7 +130,8 @@ SELECT
 FROM {preamble}_gdppr_subset gp
 INNER JOIN {collab_database}.{cohort_codelist_weight_table_name} lkp_wt
 ON gp.CODE = lkp_wt.code
-WHERE VALUE1_CONDITION IS NOT NULL""")
+WHERE VALUE1_CONDITION IS NOT NULL"""
+)
 
 # COMMAND ----------
 
@@ -139,7 +148,8 @@ print(f"`{cohort_all_weights_table_name}` has {table.count()} rows and {len(tabl
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_all_heights AS
 SELECT
   NHS_NUMBER_DEID,
@@ -152,7 +162,8 @@ SELECT
 FROM {preamble}_gdppr_subset gp
 INNER JOIN {collab_database}.{cohort_codelist_height_table_name} lkp_ht
 ON gp.CODE = lkp_ht.code
-WHERE VALUE1_CONDITION IS NOT NULL""")
+WHERE VALUE1_CONDITION IS NOT NULL"""
+)
 
 # COMMAND ----------
 
@@ -169,11 +180,14 @@ print(f"`{cohort_all_heights_table_name}` has {table.count()} rows and {len(tabl
 
 # COMMAND ----------
 
-print("Finding minimum time period between records for individuals with both height and weight data; calculating BMI using this data...")
+print(
+    "Finding minimum time period between records for individuals with both height and weight data; calculating BMI using this data..."
+)
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_all_weights_and_heights AS
 SELECT
   COALESCE(a.NHS_NUMBER_DEID, b.NHS_NUMBER_DEID) AS NHS_NUMBER_DEID,
@@ -187,16 +201,20 @@ SELECT
   HEIGHT_CODE
 FROM {collab_database}.{cohort_all_weights_table_name} a
 FULL OUTER JOIN {collab_database}.{cohort_all_heights_table_name} b
-ON a.NHS_NUMBER_DEID = b.NHS_NUMBER_DEID AND a.LOOKBACK_DATE = b.LOOKBACK_DATE""")
-spark.sql(f"""
+ON a.NHS_NUMBER_DEID = b.NHS_NUMBER_DEID AND a.LOOKBACK_DATE = b.LOOKBACK_DATE"""
+)
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_min_weight_height_deltas AS
 SELECT
   NHS_NUMBER_DEID,
   LOOKBACK_DATE,
   MIN(WEIGHT_HEIGHT_DATE_DELTA) AS MIN_WEIGHT_HEIGHT_DATE_DELTA
 FROM {preamble}_all_weights_and_heights
-GROUP BY NHS_NUMBER_DEID, LOOKBACK_DATE""")
-spark.sql(f"""
+GROUP BY NHS_NUMBER_DEID, LOOKBACK_DATE"""
+)
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_max_weight_height_dates AS
 SELECT
   a.NHS_NUMBER_DEID,
@@ -206,8 +224,10 @@ SELECT
 FROM {preamble}_all_weights_and_heights a
 INNER JOIN {preamble}_min_weight_height_deltas b
 ON a.NHS_NUMBER_DEID = b.NHS_NUMBER_DEID AND a.LOOKBACK_DATE = b.LOOKBACK_DATE AND a.WEIGHT_HEIGHT_DATE_DELTA = b.MIN_WEIGHT_HEIGHT_DATE_DELTA
-GROUP BY a.NHS_NUMBER_DEID, a.LOOKBACK_DATE""")
-spark.sql(f"""
+GROUP BY a.NHS_NUMBER_DEID, a.LOOKBACK_DATE"""
+)
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_best_weight_and_height AS
 SELECT
   a.NHS_NUMBER_DEID,
@@ -223,7 +243,8 @@ INNER JOIN {preamble}_min_weight_height_deltas b
 ON a.NHS_NUMBER_DEID = b.NHS_NUMBER_DEID AND a.LOOKBACK_DATE = b.LOOKBACK_DATE AND a.WEIGHT_HEIGHT_DATE_DELTA = b.MIN_WEIGHT_HEIGHT_DATE_DELTA
 INNER JOIN {preamble}_max_weight_height_dates c
 ON a.NHS_NUMBER_DEID = c.NHS_NUMBER_DEID AND a.LOOKBACK_DATE = c.LOOKBACK_DATE AND ((MAX_DATE_TYPE = "WEIGHT" AND WEIGHT_DATE = MAX_DATE) OR (MAX_DATE_TYPE = "HEIGHT" AND HEIGHT_DATE = MAX_DATE))
-GROUP BY a.NHS_NUMBER_DEID, a.LOOKBACK_DATE, a.WEIGHT_HEIGHT_DATE_DELTA, a.WEIGHT_DATE, a.HEIGHT_DATE""")
+GROUP BY a.NHS_NUMBER_DEID, a.LOOKBACK_DATE, a.WEIGHT_HEIGHT_DATE_DELTA, a.WEIGHT_DATE, a.HEIGHT_DATE"""
+)
 
 # COMMAND ----------
 
@@ -244,23 +265,28 @@ print("For those indivudals without both weight and height, finding the most rec
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_best_weight_max_dates AS
 SELECT a.NHS_NUMBER_DEID, a.LOOKBACK_DATE, MAX(a.WEIGHT_DATE) AS MAX_WEIGHT_DATE
 FROM {collab_database}.{cohort_all_weights_table_name} a
 -- ANTI JOIN {collab_database}.{preamble}_wip_hosp_cohort_best_weight_and_height b
 ANTI JOIN {collab_database}.{cohort_best_weight_and_height_table_name} b
 ON a.NHS_NUMBER_DEID = b.NHS_NUMBER_DEID AND a.LOOKBACK_DATE = b.LOOKBACK_DATE
-GROUP BY a.NHS_NUMBER_DEID, a.LOOKBACK_DATE""")
-spark.sql(f"""
+GROUP BY a.NHS_NUMBER_DEID, a.LOOKBACK_DATE"""
+)
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_best_height_max_dates AS
 SELECT a.NHS_NUMBER_DEID, a.LOOKBACK_DATE, MAX(a.HEIGHT_DATE) AS MAX_HEIGHT_DATE
 FROM {collab_database}.{cohort_all_heights_table_name} a
 -- ANTI JOIN {collab_database}.{preamble}_wip_hosp_cohort_best_weight_and_height b
 ANTI JOIN {collab_database}.{cohort_best_weight_and_height_table_name} b
 ON a.NHS_NUMBER_DEID = b.NHS_NUMBER_DEID AND a.LOOKBACK_DATE = b.LOOKBACK_DATE
-GROUP BY a.NHS_NUMBER_DEID, a.LOOKBACK_DATE""")
-spark.sql(f"""
+GROUP BY a.NHS_NUMBER_DEID, a.LOOKBACK_DATE"""
+)
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_best_weight AS
 SELECT
   a.NHS_NUMBER_DEID,
@@ -270,8 +296,10 @@ SELECT
 FROM {collab_database}.{cohort_all_weights_table_name} a
 INNER JOIN {preamble}_best_weight_max_dates b
 ON a.NHS_NUMBER_DEID = b.NHS_NUMBER_DEID AND a.LOOKBACK_DATE = b.LOOKBACK_DATE AND a.WEIGHT_DATE = b.MAX_WEIGHT_DATE
-GROUP BY a.NHS_NUMBER_DEID, a.LOOKBACK_DATE, a.WEIGHT_DATE""")
-spark.sql(f"""
+GROUP BY a.NHS_NUMBER_DEID, a.LOOKBACK_DATE, a.WEIGHT_DATE"""
+)
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_best_height AS
 SELECT
   a.NHS_NUMBER_DEID,
@@ -281,31 +309,43 @@ SELECT
 FROM {collab_database}.{cohort_all_heights_table_name} a
 INNER JOIN {preamble}_best_height_max_dates b
 ON a.NHS_NUMBER_DEID = b.NHS_NUMBER_DEID AND a.LOOKBACK_DATE = b.LOOKBACK_DATE AND a.HEIGHT_DATE = b.MAX_HEIGHT_DATE
-GROUP BY a.NHS_NUMBER_DEID, a.LOOKBACK_DATE, a.HEIGHT_DATE""")
+GROUP BY a.NHS_NUMBER_DEID, a.LOOKBACK_DATE, a.HEIGHT_DATE"""
+)
 
 # COMMAND ----------
 
-spark.sql(f"SELECT * FROM {collab_database}.{cohort_best_weight_and_height_table_name}") \
-  .unionByName(spark.sql(f"SELECT *, NULL AS WEIGHT_HEIGHT_DATE_DELTA, NULL AS BMI, NULL AS HEIGHT, NULL AS HEIGHT_DATE FROM {preamble}_best_weight")) \
-  .unionByName(spark.sql(f"SELECT *, NULL AS WEIGHT_HEIGHT_DATE_DELTA, NULL AS BMI, NULL AS WEIGHT, NULL AS WEIGHT_DATE FROM {preamble}_best_height")) \
-  .orderBy("NHS_NUMBER_DEID") \
-  .createOrReplaceTempView(f"{preamble}_best_weight_and_height_to_join")
+spark.sql(f"SELECT * FROM {collab_database}.{cohort_best_weight_and_height_table_name}").unionByName(
+    spark.sql(
+        f"SELECT *, NULL AS WEIGHT_HEIGHT_DATE_DELTA, NULL AS BMI, NULL AS HEIGHT, NULL AS HEIGHT_DATE FROM {preamble}_best_weight"
+    )
+).unionByName(
+    spark.sql(
+        f"SELECT *, NULL AS WEIGHT_HEIGHT_DATE_DELTA, NULL AS BMI, NULL AS WEIGHT, NULL AS WEIGHT_DATE FROM {preamble}_best_height"
+    )
+).orderBy(
+    "NHS_NUMBER_DEID"
+).createOrReplaceTempView(
+    f"{preamble}_best_weight_and_height_to_join"
+)
 
 print("Joining the union of the weight, height and BMI info to the cohort...")
 
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"SELECT COUNT(*), COUNT(DISTINCT NHS_NUMBER_DEID) FROM {preamble}_best_weight_and_height_to_join"))
+    display(
+        spark.sql(f"SELECT COUNT(*), COUNT(DISTINCT NHS_NUMBER_DEID) FROM {preamble}_best_weight_and_height_to_join")
+    )
 
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"SELECT * FROM {collab_database}.{cohort_best_weight_and_height_table_name} ORDER BY BMI DESC"))
+    display(spark.sql(f"SELECT * FROM {collab_database}.{cohort_best_weight_and_height_table_name} ORDER BY BMI DESC"))
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_w_bmi AS
 SELECT
   a.*,
@@ -320,7 +360,8 @@ SELECT
   CASE WHEN WEIGHT IS NOT NULL THEN 1 ELSE 0 END AS HAS_WEIGHT
 FROM {collab_database}.{input_table_name} a
 LEFT JOIN {preamble}_best_weight_and_height_to_join b
-ON a.PERSON_ID_DEID = b.NHS_NUMBER_DEID AND a.LOOKBACK_DATE = b.LOOKBACK_DATE""")
+ON a.PERSON_ID_DEID = b.NHS_NUMBER_DEID AND a.LOOKBACK_DATE = b.LOOKBACK_DATE"""
+)
 
 # COMMAND ----------
 
@@ -338,9 +379,17 @@ print(f"`{output_table_name}` has {table.count()} rows and {len(table.columns)} 
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"SELECT ADMISSION_IN_WINDOW, COUNT(*), SUM(CASE WHEN WEIGHT IS NOT NULL THEN 1 ELSE 0 END), SUM(CASE WHEN HEIGHT IS NOT NULL THEN 1 ELSE 0 END), SUM(CASE WHEN BMI IS NOT NULL THEN 1 ELSE 0 END), SUM(CASE WHEN BMI IS NOT NULL AND WEIGHT IS NOT NULL AND HEIGHT IS NOT NULL THEN 1 ELSE 0 END) FROM {collab_database}.{preamble}_wip_cohort_w_bmi GROUP BY ADMISSION_IN_WINDOW"))
+    display(
+        spark.sql(
+            f"SELECT ADMISSION_IN_WINDOW, COUNT(*), SUM(CASE WHEN WEIGHT IS NOT NULL THEN 1 ELSE 0 END), SUM(CASE WHEN HEIGHT IS NOT NULL THEN 1 ELSE 0 END), SUM(CASE WHEN BMI IS NOT NULL THEN 1 ELSE 0 END), SUM(CASE WHEN BMI IS NOT NULL AND WEIGHT IS NOT NULL AND HEIGHT IS NOT NULL THEN 1 ELSE 0 END) FROM {collab_database}.{preamble}_wip_cohort_w_bmi GROUP BY ADMISSION_IN_WINDOW"
+        )
+    )
 
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"SELECT PERSON_ID_DEID, BMI, WEIGHT, HEIGHT, * FROM (SELECT *, FIRST_VALUE(INFECTION_IDX) OVER (PARTITION BY PERSON_ID_DEID ORDER BY INFECTION_IDX DESC) AS MAX_INFECTION_IDX FROM {collab_database}.{preamble}_wip_cohort_w_bmi) WHERE MAX_INFECTION_IDX > 3"))
+    display(
+        spark.sql(
+            f"SELECT PERSON_ID_DEID, BMI, WEIGHT, HEIGHT, * FROM (SELECT *, FIRST_VALUE(INFECTION_IDX) OVER (PARTITION BY PERSON_ID_DEID ORDER BY INFECTION_IDX DESC) AS MAX_INFECTION_IDX FROM {collab_database}.{preamble}_wip_cohort_w_bmi) WHERE MAX_INFECTION_IDX > 3"
+        )
+    )

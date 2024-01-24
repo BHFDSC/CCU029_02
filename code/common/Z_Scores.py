@@ -20,9 +20,9 @@ unpack_config(config)
 # COMMAND ----------
 
 try:
-  test
+    test
 except:
-  test = True
+    test = True
 
 # COMMAND ----------
 
@@ -41,7 +41,9 @@ print("Calculate Z-Scores relative to BMI- and weight-for-age...")
 
 # COMMAND ----------
 
-df = spark.sql(f"SELECT PERSON_ID_DEID, LOOKBACK_DATE, AGE, BMI, WEIGHT, SEX FROM {collab_database}.{input_table_name} ORDER BY PERSON_ID_DEID, LOOKBACK_DATE").toPandas()
+df = spark.sql(
+    f"SELECT PERSON_ID_DEID, LOOKBACK_DATE, AGE, BMI, WEIGHT, SEX FROM {collab_database}.{input_table_name} ORDER BY PERSON_ID_DEID, LOOKBACK_DATE"
+).toPandas()
 ids = list(df["PERSON_ID_DEID"])
 ids2 = list(df["LOOKBACK_DATE"])
 x = np.array(df["AGE"])
@@ -56,8 +58,12 @@ weight_z_scores = LMS2z(x, weight, sex, "wt", toz=True)
 
 # COMMAND ----------
 
-bmi_z_scores_df = spark.createDataFrame(pd.DataFrame({"PERSON_ID_DEID": ids, "LOOKBACK_DATE": ids2, "BMI_Z_SCORE": bmi_z_scores})).replace(float('nan'), None)
-weight_z_scores_df = spark.createDataFrame(pd.DataFrame({"PERSON_ID_DEID": ids, "LOOKBACK_DATE": ids2, "WEIGHT_Z_SCORE": weight_z_scores})).replace(float('nan'), None)
+bmi_z_scores_df = spark.createDataFrame(
+    pd.DataFrame({"PERSON_ID_DEID": ids, "LOOKBACK_DATE": ids2, "BMI_Z_SCORE": bmi_z_scores})
+).replace(float("nan"), None)
+weight_z_scores_df = spark.createDataFrame(
+    pd.DataFrame({"PERSON_ID_DEID": ids, "LOOKBACK_DATE": ids2, "WEIGHT_Z_SCORE": weight_z_scores})
+).replace(float("nan"), None)
 
 # COMMAND ----------
 
@@ -73,7 +79,8 @@ create_table(cohort_weight_zscores_table_name)
 
 # COMMAND ----------
 
-cohort_w_z_scores = spark.sql(f"""
+cohort_w_z_scores = spark.sql(
+    f"""
 SELECT
   a.*,
   BMI_Z_SCORE,
@@ -83,7 +90,8 @@ INNER JOIN {collab_database}.{cohort_bmi_zscores_table_name} b
 ON a.PERSON_ID_DEID = b.PERSON_ID_DEID AND a.LOOKBACK_DATE = b.LOOKBACK_DATE
 INNER JOIN {collab_database}.{cohort_weight_zscores_table_name} c
 ON a.PERSON_ID_DEID = c.PERSON_ID_DEID AND a.LOOKBACK_DATE = c.LOOKBACK_DATE
-""")
+"""
+)
 
 print(f"Creating `{output_table_name}` with study start date == {study_start}")
 

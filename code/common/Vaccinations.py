@@ -16,9 +16,9 @@ unpack_config(config)
 # COMMAND ----------
 
 try:
-  test
+    test
 except:
-  test = True
+    test = True
 
 # COMMAND ----------
 
@@ -33,13 +33,16 @@ print("Subsetting vaccination info to IDs from cohort and extracting dates...")
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_filtered_vax AS
 SELECT b.INFECTION_DATE, a.*
 FROM dars_nic_391419_j3w9t.vaccine_status_dars_nic_391419_j3w9t a
 INNER JOIN {collab_database}.{input_table_name} b
-ON a.PERSON_ID_DEID = b.PERSON_ID_DEID""")
-spark.sql(f"""
+ON a.PERSON_ID_DEID = b.PERSON_ID_DEID"""
+)
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_filtered_vax_dates AS
 SELECT
   vax1.PERSON_ID_DEID,
@@ -75,16 +78,18 @@ LEFT JOIN (
   WHERE VACCINATION_PROCEDURE_CODE = 1362591000000103
   GROUP BY PERSON_ID_DEID, INFECTION_DATE
 ) as booster
-ON vax1.PERSON_ID_DEID = booster.PERSON_ID_DEID AND vax1.INFECTION_DATE = booster.INFECTION_DATE""")
+ON vax1.PERSON_ID_DEID = booster.PERSON_ID_DEID AND vax1.INFECTION_DATE = booster.INFECTION_DATE"""
+)
 
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"SELECT * FROM {preamble}_filtered_vax_dates ORDER BY PERSON_ID_DEID, INFECTION_DATE ASC"))
+    display(spark.sql(f"SELECT * FROM {preamble}_filtered_vax_dates ORDER BY PERSON_ID_DEID, INFECTION_DATE ASC"))
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_cohort_w_vaccinations AS
 SELECT
   cohort.*,
@@ -100,7 +105,8 @@ SELECT
   BOOSTER_VAX_DATE
 FROM {collab_database}.{input_table_name} as cohort
 LEFT JOIN {preamble}_filtered_vax_dates as vax
-ON cohort.PERSON_ID_DEID = vax.PERSON_ID_DEID AND cohort.INFECTION_DATE = vax.INFECTION_DATE""")
+ON cohort.PERSON_ID_DEID = vax.PERSON_ID_DEID AND cohort.INFECTION_DATE = vax.INFECTION_DATE"""
+)
 
 # COMMAND ----------
 

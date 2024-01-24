@@ -20,9 +20,9 @@ unpack_config(config)
 # COMMAND ----------
 
 try:
-  test
+    test
 except:
-  test = True
+    test = True
 
 # COMMAND ----------
 
@@ -38,7 +38,9 @@ print("Applying the hierachy of type definitions to all admissions...")
 # COMMAND ----------
 
 if "only_important_admissions" in config:
-    query_string = create_typed_admissions_query(f"{collab_database}.{input_table_name}", important_only=config["only_important_admissions"])
+    query_string = create_typed_admissions_query(
+        f"{collab_database}.{input_table_name}", important_only=config["only_important_admissions"]
+    )
 elif "old_pims" in config:
     query_string = create_typed_admissions_query(f"{collab_database}.{input_table_name}", old_pims=config["old_pims"])
 else:

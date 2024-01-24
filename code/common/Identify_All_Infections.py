@@ -16,9 +16,9 @@ unpack_config(config)
 # COMMAND ----------
 
 try:
-  test
+    test
 except:
-  test = True
+    test = True
 
 # COMMAND ----------
 
@@ -47,25 +47,34 @@ print("Joining admission and first tests datasets in order to identify and link 
 # COMMAND ----------
 
 if test:
-  all_rows = spark.sql(f"SELECT COUNT(*) FROM {collab_database}.{admissions_table_name}").first()[0]
-  distinct_admissions = spark.sql(f"SELECT COUNT(DISTINCT PERSON_ID_DEID, ADMIDATE) FROM {collab_database}.{admissions_table_name}").first()[0]
-  distinct_admissions_and_discharges = spark.sql(f"SELECT COUNT(DISTINCT PERSON_ID_DEID, ADMIDATE, CASE WHEN DISDATE IS NULL THEN '{study_end}' ELSE DISDATE END) FROM {collab_database}.{admissions_table_name}").first()[0]
-  print(all_rows, distinct_admissions, distinct_admissions_and_discharges)
-  assert all_rows == distinct_admissions and distinct_admissions == distinct_admissions_and_discharges
+    all_rows = spark.sql(f"SELECT COUNT(*) FROM {collab_database}.{admissions_table_name}").first()[0]
+    distinct_admissions = spark.sql(
+        f"SELECT COUNT(DISTINCT PERSON_ID_DEID, ADMIDATE) FROM {collab_database}.{admissions_table_name}"
+    ).first()[0]
+    distinct_admissions_and_discharges = spark.sql(
+        f"SELECT COUNT(DISTINCT PERSON_ID_DEID, ADMIDATE, CASE WHEN DISDATE IS NULL THEN '{study_end}' ELSE DISDATE END) FROM {collab_database}.{admissions_table_name}"
+    ).first()[0]
+    print(all_rows, distinct_admissions, distinct_admissions_and_discharges)
+    assert all_rows == distinct_admissions and distinct_admissions == distinct_admissions_and_discharges
 
 # COMMAND ----------
 
 if test:
-  all_rows = spark.sql(f"SELECT COUNT(*) FROM {collab_database}.{tests_table_name}").first()[0]
-  distinct_tests = spark.sql(f"SELECT COUNT(DISTINCT PERSON_ID_DEID, POSITIVE_TEST_DATE) FROM {collab_database}.{tests_table_name}").first()[0]
-  print(all_rows, distinct_tests)
-  assert all_rows == distinct_tests
+    all_rows = spark.sql(f"SELECT COUNT(*) FROM {collab_database}.{tests_table_name}").first()[0]
+    distinct_tests = spark.sql(
+        f"SELECT COUNT(DISTINCT PERSON_ID_DEID, POSITIVE_TEST_DATE) FROM {collab_database}.{tests_table_name}"
+    ).first()[0]
+    print(all_rows, distinct_tests)
+    assert all_rows == distinct_tests
 
-print(f"Determining and linking all positive test-based infections within the case hospitalisation window ({case_hospitalisation_window} days)")
+print(
+    f"Determining and linking all positive test-based infections within the case hospitalisation window ({case_hospitalisation_window} days)"
+)
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_all_admissions_w_tests_in_ch_window AS
 SELECT
   PERSON_ID_DEID,
@@ -86,27 +95,35 @@ FROM (
   LEFT JOIN {collab_database}.{tests_table_name} b
   ON a.PERSON_ID_DEID == b.PERSON_ID_DEID AND POSITIVE_TEST_DATE BETWEEN DATE_SUB(ADMIDATE, {case_hospitalisation_window}) AND COALESCE(DISDATE, POSITIVE_TEST_DATE)
   GROUP BY a.PERSON_ID_DEID, ADMIDATE, DISDATE
-)""")
+)"""
+)
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_all_admission_infections_from_tests AS
 SELECT
   PERSON_ID_DEID,
   ADMIDATE,
   'Test' AS INFECTION_SOURCE,
   EXPLODE(ALL_POSITIVE_TESTS) AS INFECTION_DATE
-FROM {preamble}_all_admissions_w_tests_in_ch_window""")
+FROM {preamble}_all_admissions_w_tests_in_ch_window"""
+)
 
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"SELECT * FROM {preamble}_all_admission_infections_from_tests WHERE PERSON_ID_DEID == '6ORRPEFRFIBS82E'"))
+    display(
+        spark.sql(
+            f"SELECT * FROM {preamble}_all_admission_infections_from_tests WHERE PERSON_ID_DEID == '6ORRPEFRFIBS82E'"
+        )
+    )
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_all_covid_admissions AS
 SELECT *
 FROM (
@@ -133,7 +150,8 @@ FROM (
   WHERE COVID_BY_CODE == 1 OR PIMS_BY_CODE == 1 OR COVID_BY_TEST == 1
 )
 -- WHERE COVID_BY_TEST == 1 OR (FIRST_ADMISSION == 1 AND PIMS_BY_CODE == 1) OR (FIRST_ADMISSION == 1 AND COVID_BY_CODE == 1) OR COVID_PRIMARY_BY_CODE == 1 OR PIMS_PRIMARY_BY_CODE == 1
-WHERE COVID_BY_TEST == 1 OR (FIRST_ADMISSION == 1 AND PIMS_BY_CODE == 1) OR (FIRST_INFECTION == 1 AND COVID_BY_CODE == 1) OR COVID_PRIMARY_BY_CODE == 1 OR PIMS_PRIMARY_BY_CODE == 1""")
+WHERE COVID_BY_TEST == 1 OR (FIRST_ADMISSION == 1 AND PIMS_BY_CODE == 1) OR (FIRST_INFECTION == 1 AND COVID_BY_CODE == 1) OR COVID_PRIMARY_BY_CODE == 1 OR PIMS_PRIMARY_BY_CODE == 1"""
+)
 
 # COMMAND ----------
 
@@ -150,11 +168,16 @@ print(f"`{all_covid_admissions_table_name}` has {table.count()} rows and {len(ta
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"SELECT * FROM {collab_database}.{all_covid_admissions_table_name} WHERE PERSON_ID_DEID == '6ORRPEFRFIBS82E'"))
+    display(
+        spark.sql(
+            f"SELECT * FROM {collab_database}.{all_covid_admissions_table_name} WHERE PERSON_ID_DEID == '6ORRPEFRFIBS82E'"
+        )
+    )
 
 # COMMAND ----------
 
-spark.sql(f"""CREATE OR REPLACE TEMP VIEW {preamble}_all_admission_infections_from_diagnosis AS
+spark.sql(
+    f"""CREATE OR REPLACE TEMP VIEW {preamble}_all_admission_infections_from_diagnosis AS
 SELECT
   PERSON_ID_DEID,
   ADMIDATE,
@@ -169,16 +192,22 @@ FROM (
   FROM {collab_database}.{admissions_table_name} a
   INNER JOIN {collab_database}.{all_covid_admissions_table_name} b
   ON a.PERSON_ID_DEID == b.PERSON_ID_DEID AND a.ADMIDATE == b.ADMIDATE
-) WHERE INFECTION_DATE IS NOT NULL""")
+) WHERE INFECTION_DATE IS NOT NULL"""
+)
 
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"SELECT * FROM {preamble}_all_admission_infections_from_diagnosis WHERE PERSON_ID_DEID == '6ORRPEFRFIBS82E'"))
+    display(
+        spark.sql(
+            f"SELECT * FROM {preamble}_all_admission_infections_from_diagnosis WHERE PERSON_ID_DEID == '6ORRPEFRFIBS82E'"
+        )
+    )
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_all_admission_infection_dates AS
 SELECT
   x.*,
@@ -198,16 +227,19 @@ FROM (
   GROUP BY PERSON_ID_DEID, ADMIDATE, INFECTION_DATE
 ) x
 INNER JOIN {collab_database}.{admissions_table_name} y
-ON x.PERSON_ID_DEID == y.PERSON_ID_DEID AND x.ADMIDATE == y.ADMIDATE""")
+ON x.PERSON_ID_DEID == y.PERSON_ID_DEID AND x.ADMIDATE == y.ADMIDATE"""
+)
 
 # COMMAND ----------
 
 print(f"Creating `{all_admission_infection_dates_table_name}` with study start date == {study_start}")
 
-spark.sql(f"SELECT * FROM {preamble}_all_admission_infection_dates").createOrReplaceTempView(all_admission_infection_dates_table_name)
+spark.sql(f"SELECT * FROM {preamble}_all_admission_infection_dates").createOrReplaceTempView(
+    all_admission_infection_dates_table_name
+)
 drop_table(all_admission_infection_dates_table_name)
 create_table(all_admission_infection_dates_table_name)
-optimise_table(all_admission_infection_dates_table_name, 'PERSON_ID_DEID')
+optimise_table(all_admission_infection_dates_table_name, "PERSON_ID_DEID")
 
 table = spark.sql(f"SELECT * FROM {collab_database}.{all_admission_infection_dates_table_name}")
 print(f"`{all_admission_infection_dates_table_name}` has {table.count()} rows and {len(table.columns)} columns.")
@@ -215,16 +247,24 @@ print(f"`{all_admission_infection_dates_table_name}` has {table.count()} rows an
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"SELECT * FROM {collab_database}.{all_admission_infection_dates_table_name} WHERE PERSON_ID_DEID == '6ORRPEFRFIBS82E'"))
+    display(
+        spark.sql(
+            f"SELECT * FROM {collab_database}.{all_admission_infection_dates_table_name} WHERE PERSON_ID_DEID == '6ORRPEFRFIBS82E'"
+        )
+    )
 
 # COMMAND ----------
 
 if test:
-  num_diag_rows = spark.sql(f"SELECT COUNT(*) FROM {preamble}_all_admission_infections_from_diagnosis").first()[0]
-  num_test_rows = spark.sql(f"SELECT COUNT(*) FROM {preamble}_all_admission_infections_from_tests a INNER JOIN {collab_database}.{all_covid_admissions_table_name} b ON a.PERSON_ID_DEID == b.PERSON_ID_DEID AND a.ADMIDATE == b.ADMIDATE").first()[0]
-  num_post_union = spark.sql(f"SELECT SUM(NUM_SOURCES) FROM {collab_database}.{all_admission_infection_dates_table_name}").first()[0]
-  print(num_diag_rows, num_test_rows, num_post_union)
-  assert num_diag_rows + num_test_rows == num_post_union
+    num_diag_rows = spark.sql(f"SELECT COUNT(*) FROM {preamble}_all_admission_infections_from_diagnosis").first()[0]
+    num_test_rows = spark.sql(
+        f"SELECT COUNT(*) FROM {preamble}_all_admission_infections_from_tests a INNER JOIN {collab_database}.{all_covid_admissions_table_name} b ON a.PERSON_ID_DEID == b.PERSON_ID_DEID AND a.ADMIDATE == b.ADMIDATE"
+    ).first()[0]
+    num_post_union = spark.sql(
+        f"SELECT SUM(NUM_SOURCES) FROM {collab_database}.{all_admission_infection_dates_table_name}"
+    ).first()[0]
+    print(num_diag_rows, num_test_rows, num_post_union)
+    assert num_diag_rows + num_test_rows == num_post_union
 
 # COMMAND ----------
 
@@ -237,7 +277,7 @@ pool = f"""
     INFECTION_END_DATE
   FROM {collab_database}.{all_admission_infection_dates_table_name}"""
 if not admissions_only:
-  pool += f"""
+    pool += f"""
   UNION
   SELECT
     PERSON_ID_DEID,
@@ -255,17 +295,19 @@ if not admissions_only:
 
 # COMMAND ----------
 
-all_infections = spark.sql(f"""
+all_infections = spark.sql(
+    f"""
 SELECT * FROM ({pool}
 )
-WHERE INFECTION_DATE <= '{infection_censoring_date}'""")
+WHERE INFECTION_DATE <= '{infection_censoring_date}'"""
+)
 
 print(f"Creating `{all_infection_dates_table_name}` with study start date == {study_start}")
 
 all_infections.createOrReplaceTempView(all_infection_dates_table_name)
 drop_table(all_infection_dates_table_name)
 create_table(all_infection_dates_table_name)
-optimise_table(all_infection_dates_table_name, 'PERSON_ID_DEID')
+optimise_table(all_infection_dates_table_name, "PERSON_ID_DEID")
 
 table = spark.sql(f"SELECT * FROM {collab_database}.{all_infection_dates_table_name}")
 print(f"`{all_infection_dates_table_name}` has {table.count()} rows and {len(table.columns)} columns.")
@@ -276,26 +318,44 @@ print(f"`{all_infection_dates_table_name}` has {table.count()} rows and {len(tab
 admissions_col_names = spark.sql(f"SELECT * FROM {collab_database}.{all_covid_admissions_table_name}").schema.names
 tests_col_names = spark.sql(f"SELECT * FROM {collab_database}.{tests_table_name}").schema.names
 
-cols_to_include = ",\n      ".join([
-  f"COALESCE(b.{col_name}, c.{col_name}) AS {col_name}" if col_name in tests_col_names and col_name in admissions_col_names else f"`{col_name}`"
-  for col_name in unique_and_filter(admissions_col_names + tests_col_names, ["PERSON_ID_DEID", "ADMIDATE", "POSITIVE_TEST_DATE", "ADMISSION_VARIANT_PERIOD", "POSITIVE_TEST_VARIANT_PERIOD", "TYPE_OF_ADMISSION"])
- ])
+cols_to_include = ",\n      ".join(
+    [
+        f"COALESCE(b.{col_name}, c.{col_name}) AS {col_name}"
+        if col_name in tests_col_names and col_name in admissions_col_names
+        else f"`{col_name}`"
+        for col_name in unique_and_filter(
+            admissions_col_names + tests_col_names,
+            [
+                "PERSON_ID_DEID",
+                "ADMIDATE",
+                "POSITIVE_TEST_DATE",
+                "ADMISSION_VARIANT_PERIOD",
+                "POSITIVE_TEST_VARIANT_PERIOD",
+                "TYPE_OF_ADMISSION",
+            ],
+        )
+    ]
+)
 
 if test:
-  print(admissions_col_names)
-  print(tests_col_names)
-  print(cols_to_include)
+    print(admissions_col_names)
+    print(tests_col_names)
+    print(cols_to_include)
 
 # COMMAND ----------
+
 
 def generate_nth_table_name(iteration):
-  suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(iteration % 10 if iteration % 100 not in [11,12,13] else 0, 'th')
-  return f"{preamble}_{iteration}{suffix}_infections"
+    suffix = {1: "st", 2: "nd", 3: "rd"}.get(iteration % 10 if iteration % 100 not in [11, 12, 13] else 0, "th")
+    return f"{preamble}_{iteration}{suffix}_infections"
+
 
 # COMMAND ----------
 
+
 def create_partial_cohort(iteration):
-  return spark.sql(f"""
+    return spark.sql(
+        f"""
 SELECT *
 FROM (
   SELECT
@@ -327,35 +387,43 @@ FROM (
     LEFT JOIN {collab_database}.{tests_table_name} c
     ON a.PERSON_ID_DEID == c.PERSON_ID_DEID AND INFECTION_DATE = c.POSITIVE_TEST_DATE
   )
-) WHERE AGE < 18 AND INFECTION_DATE <= '{infection_censoring_date}'""")
+) WHERE AGE < 18 AND INFECTION_DATE <= '{infection_censoring_date}'"""
+    )
+
 
 # COMMAND ----------
 
+
 def create_cohort(n_infections=1):
-  iteration = 1
-  table_count = 1
-  partial_table_statements = []
-  while table_count > 0 and iteration <= n_infections:
-    partial_table_name = generate_nth_table_name(iteration)
-    table = create_partial_cohort(iteration)
-    table.createOrReplaceTempView(partial_table_name)
-    drop_table(partial_table_name)
-    create_table(partial_table_name)
-    optimise_table(partial_table_name, 'PERSON_ID_DEID')
-    
-    table = spark.sql(f"SELECT * FROM {collab_database}.{partial_table_name}")
-    table_count = table.count()
-    print(f"`{partial_table_name}` has {table_count} rows and {len(table.columns)} columns.")
-    partial_table_statements.append(f"SELECT *, {iteration} AS INFECTION_IDX FROM {collab_database}.{partial_table_name}")
-    iteration += 1
-  return spark.sql(f"SELECT * FROM ({' UNION '.join(partial_table_statements)}) WHERE INFECTION_DATE >= '{study_start}'""")
+    iteration = 1
+    table_count = 1
+    partial_table_statements = []
+    while table_count > 0 and iteration <= n_infections:
+        partial_table_name = generate_nth_table_name(iteration)
+        table = create_partial_cohort(iteration)
+        table.createOrReplaceTempView(partial_table_name)
+        drop_table(partial_table_name)
+        create_table(partial_table_name)
+        optimise_table(partial_table_name, "PERSON_ID_DEID")
+
+        table = spark.sql(f"SELECT * FROM {collab_database}.{partial_table_name}")
+        table_count = table.count()
+        print(f"`{partial_table_name}` has {table_count} rows and {len(table.columns)} columns.")
+        partial_table_statements.append(
+            f"SELECT *, {iteration} AS INFECTION_IDX FROM {collab_database}.{partial_table_name}"
+        )
+        iteration += 1
+    return spark.sql(
+        f"SELECT * FROM ({' UNION '.join(partial_table_statements)}) WHERE INFECTION_DATE >= '{study_start}'" ""
+    )
+
 
 # COMMAND ----------
 
 if include_reinfections:
-  n_infections = 100
+    n_infections = 100
 else:
-  n_infections = 1
+    n_infections = 1
 
 full_cohort = create_cohort(n_infections=n_infections)
 
@@ -366,58 +434,83 @@ print(f"Creating `{output_table_name}` with study start date == {study_start}")
 full_cohort.createOrReplaceTempView(output_table_name)
 drop_table(output_table_name)
 create_table(output_table_name)
-optimise_table(output_table_name, 'PERSON_ID_DEID')
+optimise_table(output_table_name, "PERSON_ID_DEID")
 
 table = spark.sql(f"SELECT * FROM {collab_database}.{output_table_name}")
 print(f"`{output_table_name}` has {table.count()} rows and {len(table.columns)} columns.")
 
 # COMMAND ----------
 
-display(spark.sql(f"SELECT COUNT(*) AS COVID_ADMISSIONS_IN_COHORT FROM {collab_database}.{output_table_name} WHERE ADMISSION_IN_WINDOW == 1"))
+display(
+    spark.sql(
+        f"SELECT COUNT(*) AS COVID_ADMISSIONS_IN_COHORT FROM {collab_database}.{output_table_name} WHERE ADMISSION_IN_WINDOW == 1"
+    )
+)
 
 # COMMAND ----------
 
-display(spark.sql(f"SELECT INFECTION_IDX, COUNT(*) AS COVID_ADMISSIONS_IN_COHORT, SUM(CASE WHEN TYPE_OF_ADMISSION == 'PIMS' THEN 1 ELSE 0 END) AS NUM_PIMS FROM {collab_database}.{output_table_name} WHERE ADMISSION_IN_WINDOW == 1 GROUP BY INFECTION_IDX ORDER BY INFECTION_IDX ASC"))
-
-# COMMAND ----------
-
-if test:
-  display(spark.sql(f"SELECT * FROM (SELECT COUNT(*) OVER (PARTITION BY PERSON_ID_DEID, LOOKBACK_DATE) AS NR, * FROM {collab_database}.{output_table_name}) WHERE NR > 1"))
-
-# COMMAND ----------
-
-if test:
-  display(spark.sql(f"SELECT * FROM {collab_database}.{output_table_name} WHERE PERSON_ID_DEID == 'HHK1BMISY7EVVNX'"))
-
-# COMMAND ----------
-
-if test:
-  display(spark.sql(f"SELECT SUM(CASE WHEN INFECTION_DATE > DISDATE THEN 1 ELSE 0 END) AS DISDATE_ERRORS FROM {collab_database}.{output_table_name}"))
+display(
+    spark.sql(
+        f"SELECT INFECTION_IDX, COUNT(*) AS COVID_ADMISSIONS_IN_COHORT, SUM(CASE WHEN TYPE_OF_ADMISSION == 'PIMS' THEN 1 ELSE 0 END) AS NUM_PIMS FROM {collab_database}.{output_table_name} WHERE ADMISSION_IN_WINDOW == 1 GROUP BY INFECTION_IDX ORDER BY INFECTION_IDX ASC"
+    )
+)
 
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"SELECT SUM(CASE WHEN ICU == 1 THEN 1 ELSE 0 END) AS NUM_ICU, SUM(CASE WHEN DAY_CASE == 1 THEN 1 ELSE 0 END) AS NUM_DAY_CASE, SUM(CASE WHEN STILL_IN_HOSPITAL == 1 THEN 1 ELSE 0 END) AS NUM_STILL_IN_HOSPITAL FROM {collab_database}.{output_table_name}"))
+    display(
+        spark.sql(
+            f"SELECT * FROM (SELECT COUNT(*) OVER (PARTITION BY PERSON_ID_DEID, LOOKBACK_DATE) AS NR, * FROM {collab_database}.{output_table_name}) WHERE NR > 1"
+        )
+    )
 
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"SELECT COUNT(*), COUNT(DISTINCT PERSON_ID_DEID) FROM {collab_database}.{output_table_name}"))
+    display(spark.sql(f"SELECT * FROM {collab_database}.{output_table_name} WHERE PERSON_ID_DEID == 'HHK1BMISY7EVVNX'"))
 
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"SELECT TYPE_OF_ADMISSION, COUNT(*) FROM {collab_database}.{output_table_name} WHERE ADMISSION_IN_WINDOW == 1 GROUP BY TYPE_OF_ADMISSION"))
+    display(
+        spark.sql(
+            f"SELECT SUM(CASE WHEN INFECTION_DATE > DISDATE THEN 1 ELSE 0 END) AS DISDATE_ERRORS FROM {collab_database}.{output_table_name}"
+        )
+    )
 
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"SELECT * FROM {collab_database}.{output_table_name} WHERE TYPE_OF_ADMISSION == 'Nosocomial'"))
+    display(
+        spark.sql(
+            f"SELECT SUM(CASE WHEN ICU == 1 THEN 1 ELSE 0 END) AS NUM_ICU, SUM(CASE WHEN DAY_CASE == 1 THEN 1 ELSE 0 END) AS NUM_DAY_CASE, SUM(CASE WHEN STILL_IN_HOSPITAL == 1 THEN 1 ELSE 0 END) AS NUM_STILL_IN_HOSPITAL FROM {collab_database}.{output_table_name}"
+        )
+    )
 
 # COMMAND ----------
 
 if test:
-  unknown_primary_code_counts = spark.sql(f"""
+    display(spark.sql(f"SELECT COUNT(*), COUNT(DISTINCT PERSON_ID_DEID) FROM {collab_database}.{output_table_name}"))
+
+# COMMAND ----------
+
+if test:
+    display(
+        spark.sql(
+            f"SELECT TYPE_OF_ADMISSION, COUNT(*) FROM {collab_database}.{output_table_name} WHERE ADMISSION_IN_WINDOW == 1 GROUP BY TYPE_OF_ADMISSION"
+        )
+    )
+
+# COMMAND ----------
+
+if test:
+    display(spark.sql(f"SELECT * FROM {collab_database}.{output_table_name} WHERE TYPE_OF_ADMISSION == 'Nosocomial'"))
+
+# COMMAND ----------
+
+if test:
+    unknown_primary_code_counts = spark.sql(
+        f"""
 SELECT COUNT(*) AS N_OCCURRENCES, ICD10_CODE, ICD10_DESCRIPTION, DESCRIPTIONS_ABBREVIATED, ICD10_CHAPTER_HEADING, ICD10_CHAPTER_DESCRIPTION, ICD10_GROUP_HEADING, ICD10_GROUP_DESCRIPTION FROM (
   SELECT EXPLODE(ARRAY_DISTINCT(SPLIT(DIAG_4_CONCAT_PRIMARY, ','))) AS ICD10_CODE
   FROM {collab_database}.{output_table_name}
@@ -426,25 +519,27 @@ SELECT COUNT(*) AS N_OCCURRENCES, ICD10_CODE, ICD10_DESCRIPTION, DESCRIPTIONS_AB
 INNER JOIN dss_corporate.icd10_group_chapter_v01
 ON ICD10_CODE = ALT_CODE
 GROUP BY ICD10_CODE, ICD10_DESCRIPTION, DESCRIPTIONS_ABBREVIATED, ICD10_CHAPTER_HEADING, ICD10_CHAPTER_DESCRIPTION, ICD10_GROUP_HEADING, ICD10_GROUP_DESCRIPTION
-ORDER BY N_OCCURRENCES DESC""")
-  
-  table_name = f"{preamble}_unknown_primary_code_counts"
-  
-  print(f"Creating `{table_name}` with study start date == {study_start}")
+ORDER BY N_OCCURRENCES DESC"""
+    )
 
-  unknown_primary_code_counts.createOrReplaceTempView(table_name)
-  drop_table(table_name)
-  create_table(table_name)
+    table_name = f"{preamble}_unknown_primary_code_counts"
 
-  table = spark.sql(f"SELECT * FROM {collab_database}.{table_name} ORDER BY N_OCCURRENCES DESC")
-  print(f"`{table_name}` has {table.count()} rows and {len(table.columns)} columns.")
-  
-  display(table)
+    print(f"Creating `{table_name}` with study start date == {study_start}")
+
+    unknown_primary_code_counts.createOrReplaceTempView(table_name)
+    drop_table(table_name)
+    create_table(table_name)
+
+    table = spark.sql(f"SELECT * FROM {collab_database}.{table_name} ORDER BY N_OCCURRENCES DESC")
+    print(f"`{table_name}` has {table.count()} rows and {len(table.columns)} columns.")
+
+    display(table)
 
 # COMMAND ----------
 
 if test:
-  unknown_secondary_code_counts = spark.sql(f"""
+    unknown_secondary_code_counts = spark.sql(
+        f"""
 SELECT COUNT(*) AS N_OCCURRENCES, ICD10_CODE, ICD10_DESCRIPTION, DESCRIPTIONS_ABBREVIATED, ICD10_CHAPTER_HEADING, ICD10_CHAPTER_DESCRIPTION, ICD10_GROUP_HEADING, ICD10_GROUP_DESCRIPTION FROM (
   SELECT EXPLODE(ARRAY_DISTINCT(SPLIT(DIAG_4_CONCAT_SECONDARY, ','))) AS ICD10_CODE
   FROM {collab_database}.{output_table_name}
@@ -453,25 +548,27 @@ SELECT COUNT(*) AS N_OCCURRENCES, ICD10_CODE, ICD10_DESCRIPTION, DESCRIPTIONS_AB
 INNER JOIN dss_corporate.icd10_group_chapter_v01
 ON ICD10_CODE = ALT_CODE
 GROUP BY ICD10_CODE, ICD10_DESCRIPTION, DESCRIPTIONS_ABBREVIATED, ICD10_CHAPTER_HEADING, ICD10_CHAPTER_DESCRIPTION, ICD10_GROUP_HEADING, ICD10_GROUP_DESCRIPTION
-ORDER BY N_OCCURRENCES DESC""")
-  
-  table_name = f"{preamble}_unknown_secondary_code_counts"
-  
-  print(f"Creating `{table_name}` with study start date == {study_start}")
+ORDER BY N_OCCURRENCES DESC"""
+    )
 
-  unknown_secondary_code_counts.createOrReplaceTempView(table_name)
-  drop_table(table_name)
-  create_table(table_name)
+    table_name = f"{preamble}_unknown_secondary_code_counts"
 
-  table = spark.sql(f"SELECT * FROM {collab_database}.{table_name} ORDER BY N_OCCURRENCES DESC")
-  print(f"`{table_name}` has {table.count()} rows and {len(table.columns)} columns.")
-  
-  display(table)
+    print(f"Creating `{table_name}` with study start date == {study_start}")
+
+    unknown_secondary_code_counts.createOrReplaceTempView(table_name)
+    drop_table(table_name)
+    create_table(table_name)
+
+    table = spark.sql(f"SELECT * FROM {collab_database}.{table_name} ORDER BY N_OCCURRENCES DESC")
+    print(f"`{table_name}` has {table.count()} rows and {len(table.columns)} columns.")
+
+    display(table)
 
 # COMMAND ----------
 
 if test:
-  pims_primary_code_counts = spark.sql(f"""
+    pims_primary_code_counts = spark.sql(
+        f"""
 SELECT COUNT(*) AS N_OCCURRENCES, ICD10_CODE, ICD10_DESCRIPTION, DESCRIPTIONS_ABBREVIATED, ICD10_CHAPTER_HEADING, ICD10_CHAPTER_DESCRIPTION, ICD10_GROUP_HEADING, ICD10_GROUP_DESCRIPTION FROM (
   SELECT EXPLODE(ARRAY_DISTINCT(SPLIT(DIAG_4_CONCAT_PRIMARY, ','))) AS ICD10_CODE
   FROM {collab_database}.{output_table_name}
@@ -480,25 +577,27 @@ SELECT COUNT(*) AS N_OCCURRENCES, ICD10_CODE, ICD10_DESCRIPTION, DESCRIPTIONS_AB
 INNER JOIN dss_corporate.icd10_group_chapter_v01
 ON ICD10_CODE = ALT_CODE
 GROUP BY ICD10_CODE, ICD10_DESCRIPTION, DESCRIPTIONS_ABBREVIATED, ICD10_CHAPTER_HEADING, ICD10_CHAPTER_DESCRIPTION, ICD10_GROUP_HEADING, ICD10_GROUP_DESCRIPTION
-ORDER BY N_OCCURRENCES DESC""")
-  
-  table_name = f"{preamble}_pims_primary_code_counts"
-  
-  print(f"Creating `{table_name}` with study start date == {study_start}")
+ORDER BY N_OCCURRENCES DESC"""
+    )
 
-  pims_primary_code_counts.createOrReplaceTempView(table_name)
-  drop_table(table_name)
-  create_table(table_name)
+    table_name = f"{preamble}_pims_primary_code_counts"
 
-  table = spark.sql(f"SELECT * FROM {collab_database}.{table_name} ORDER BY N_OCCURRENCES DESC")
-  print(f"`{table_name}` has {table.count()} rows and {len(table.columns)} columns.")
-  
-  display(table)
+    print(f"Creating `{table_name}` with study start date == {study_start}")
+
+    pims_primary_code_counts.createOrReplaceTempView(table_name)
+    drop_table(table_name)
+    create_table(table_name)
+
+    table = spark.sql(f"SELECT * FROM {collab_database}.{table_name} ORDER BY N_OCCURRENCES DESC")
+    print(f"`{table_name}` has {table.count()} rows and {len(table.columns)} columns.")
+
+    display(table)
 
 # COMMAND ----------
 
 if test:
-  pims_secondary_code_counts = spark.sql(f"""
+    pims_secondary_code_counts = spark.sql(
+        f"""
 SELECT COUNT(*) AS N_OCCURRENCES, ICD10_CODE, ICD10_DESCRIPTION, DESCRIPTIONS_ABBREVIATED, ICD10_CHAPTER_HEADING, ICD10_CHAPTER_DESCRIPTION, ICD10_GROUP_HEADING, ICD10_GROUP_DESCRIPTION FROM (
   SELECT EXPLODE(ARRAY_DISTINCT(SPLIT(DIAG_4_CONCAT_SECONDARY, ','))) AS ICD10_CODE
   FROM {collab_database}.{output_table_name}
@@ -507,17 +606,18 @@ SELECT COUNT(*) AS N_OCCURRENCES, ICD10_CODE, ICD10_DESCRIPTION, DESCRIPTIONS_AB
 INNER JOIN dss_corporate.icd10_group_chapter_v01
 ON ICD10_CODE = ALT_CODE
 GROUP BY ICD10_CODE, ICD10_DESCRIPTION, DESCRIPTIONS_ABBREVIATED, ICD10_CHAPTER_HEADING, ICD10_CHAPTER_DESCRIPTION, ICD10_GROUP_HEADING, ICD10_GROUP_DESCRIPTION
-ORDER BY N_OCCURRENCES DESC""")
-  
-  table_name = f"{preamble}_pims_secondary_code_counts"
-  
-  print(f"Creating `{table_name}` with study start date == {study_start}")
+ORDER BY N_OCCURRENCES DESC"""
+    )
 
-  pims_secondary_code_counts.createOrReplaceTempView(table_name)
-  drop_table(table_name)
-  create_table(table_name)
+    table_name = f"{preamble}_pims_secondary_code_counts"
 
-  table = spark.sql(f"SELECT * FROM {collab_database}.{table_name} ORDER BY N_OCCURRENCES DESC")
-  print(f"`{table_name}` has {table.count()} rows and {len(table.columns)} columns.")
-  
-  display(table)
+    print(f"Creating `{table_name}` with study start date == {study_start}")
+
+    pims_secondary_code_counts.createOrReplaceTempView(table_name)
+    drop_table(table_name)
+    create_table(table_name)
+
+    table = spark.sql(f"SELECT * FROM {collab_database}.{table_name} ORDER BY N_OCCURRENCES DESC")
+    print(f"`{table_name}` has {table.count()} rows and {len(table.columns)} columns.")
+
+    display(table)

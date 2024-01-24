@@ -56,31 +56,35 @@ cohort_w_vaccinations_output_table_name = "wip_cohort_w_vaccinations"
 final_cohort_output_table_name = "complete_cohort"
 
 intermediary_tables = [
-  hes_apc_demographics_table_name,
-  all_covid_admissions_table_name,
-  all_admission_infection_dates_table_name,
-  all_infection_dates_table_name,
-  cohort_hes_apc_lookback_table_name,
-  cohort_hes_op_lookback_table_name,
-  cohort_gdppr_lookback_table_name,
-  cohort_codelist_weight_table_name,
-  cohort_codelist_height_table_name,
-  cohort_all_weights_table_name,
-  cohort_all_heights_table_name,
-  cohort_best_weight_and_height_table_name,
-  cohort_bmi_zscores_table_name,
-  cohort_weight_zscores_table_name,
-  cohort_w_no_gdppr_md_uhcs_table_name,
-  cohort_w_no_gdppr_green_book_uhcs_table_name,
-  cohort_w_md_uhcs_table_name
+    hes_apc_demographics_table_name,
+    all_covid_admissions_table_name,
+    all_admission_infection_dates_table_name,
+    all_infection_dates_table_name,
+    cohort_hes_apc_lookback_table_name,
+    cohort_hes_op_lookback_table_name,
+    cohort_gdppr_lookback_table_name,
+    cohort_codelist_weight_table_name,
+    cohort_codelist_height_table_name,
+    cohort_all_weights_table_name,
+    cohort_all_heights_table_name,
+    cohort_best_weight_and_height_table_name,
+    cohort_bmi_zscores_table_name,
+    cohort_weight_zscores_table_name,
+    cohort_w_no_gdppr_md_uhcs_table_name,
+    cohort_w_no_gdppr_green_book_uhcs_table_name,
+    cohort_w_md_uhcs_table_name,
 ]
 
+
 def drop_all_tables(table_name_list, preamble):
-  for table in table_name_list:
-    drop_table(f"{preamble}_{table}")
+    for table in table_name_list:
+        drop_table(f"{preamble}_{table}")
+
 
 # Creates a temporary table for consistent reference via global_temp throughout the code robust to small changes to table names set above. This is to allow for greater use of SQL code blocks rather than having to do everything with f strings
 def create_temp_table(name, alias):
-  spark.sql("""
+    spark.sql(
+        """
 CREATE OR REPLACE TEMP VIEW {alias} AS
-SELECT * FROM dsa_391419_j3w9t_collab.{name}""")
+SELECT * FROM dsa_391419_j3w9t_collab.{name}"""
+    )
