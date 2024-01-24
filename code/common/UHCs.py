@@ -20,9 +20,9 @@ unpack_config(config)
 # COMMAND ----------
 
 try:
-  test
+    test
 except:
-  test = True
+    test = True
 
 # COMMAND ----------
 
@@ -57,7 +57,9 @@ if "no_gdppr_uhcs" in config and config["no_gdppr_uhcs"] == True:
     table = spark.sql(f"SELECT * FROM {collab_database}.{cohort_w_no_gdppr_md_uhcs_table_name}")
     print(f"`{cohort_w_no_gdppr_md_uhcs_table_name}` has {table.count()} rows and {len(table.columns)} columns.")
 
-    cohort_with_no_gdppr_green_book_uhcs = formulate_uhcs("GREEN_BOOK", f"{collab_database}.{cohort_w_no_gdppr_md_uhcs_table_name}", no_gdppr=True)
+    cohort_with_no_gdppr_green_book_uhcs = formulate_uhcs(
+        "GREEN_BOOK", f"{collab_database}.{cohort_w_no_gdppr_md_uhcs_table_name}", no_gdppr=True
+    )
     print(f"Creating `{cohort_w_no_gdppr_green_book_uhcs_table_name}` with study start date == {study_start}")
 
     cohort_with_no_gdppr_green_book_uhcs.createOrReplaceTempView(cohort_w_no_gdppr_green_book_uhcs_table_name)
@@ -67,12 +69,16 @@ if "no_gdppr_uhcs" in config and config["no_gdppr_uhcs"] == True:
     optimise_table(cohort_w_no_gdppr_green_book_uhcs_table_name, "PERSON_ID_DEID")
 
     table = spark.sql(f"SELECT * FROM {collab_database}.{cohort_w_no_gdppr_green_book_uhcs_table_name}")
-    print(f"`{cohort_w_no_gdppr_green_book_uhcs_table_name}` has {table.count()} rows and {len(table.columns)} columns.")
+    print(
+        f"`{cohort_w_no_gdppr_green_book_uhcs_table_name}` has {table.count()} rows and {len(table.columns)} columns."
+    )
     no_gdppr_in = True
 
 # COMMAND ----------
 
-cohort_with_md_uhcs = formulate_uhcs("MD", f"{collab_database}.{input_table_name if not no_gdppr_in else cohort_w_no_gdppr_green_book_uhcs_table_name}")
+cohort_with_md_uhcs = formulate_uhcs(
+    "MD", f"{collab_database}.{input_table_name if not no_gdppr_in else cohort_w_no_gdppr_green_book_uhcs_table_name}"
+)
 print(f"Creating `{cohort_w_md_uhcs_table_name}` with study start date == {study_start}")
 
 cohort_with_md_uhcs.createOrReplaceTempView(cohort_w_md_uhcs_table_name)
@@ -100,7 +106,9 @@ print(f"`{output_table_name}` has {table.count()} rows and {len(table.columns)} 
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"""
+    display(
+        spark.sql(
+            f"""
     SELECT
         ADMISSION_IN_WINDOW,
         COUNT(*),
@@ -117,8 +125,8 @@ if test:
         100 * SUM(GREATEST(GREEN_BOOK_RISK_FACTOR, MD_RISK_FACTOR)) / COUNT(*) AS GREEN_BOOK_OR_MD_RF_PERC,
         100 * SUM(GREATEST(NO_GDPPR_GREEN_BOOK_RISK_FACTOR, NO_GDPPR_MD_RISK_FACTOR)) / COUNT(*) AS NO_GDPPR_GREEN_BOOK_OR_MD_RF_PERC
     FROM {collab_database}.{output_table_name}
-    GROUP BY ADMISSION_IN_WINDOW"""))
+    GROUP BY ADMISSION_IN_WINDOW"""
+        )
+    )
 
 # COMMAND ----------
-
-

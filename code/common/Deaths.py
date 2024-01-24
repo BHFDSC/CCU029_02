@@ -16,9 +16,9 @@ unpack_config(config)
 # COMMAND ----------
 
 try:
-  test
+    test
 except:
-  test = True
+    test = True
 
 # COMMAND ----------
 
@@ -35,14 +35,16 @@ print("Running tests on deaths data...")
 
 # # Deaths
 
-# According to the documentation, here `DEC_CONF_NHS_NUMBER_CLEAN_DEID` is the patient identifier column, there are a large number of duplicate IDs in the table. 
+# According to the documentation, here `DEC_CONF_NHS_NUMBER_CLEAN_DEID` is the patient identifier column, there are a large number of duplicate IDs in the table.
 
 # The following few queries illustrate some data quality issues, eventually we just aggregate at a patient ID level and return concatenated COD in primary and non-primary positions for all records that are then joined via this ID to our cohort.
 
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"""
+    display(
+        spark.sql(
+            f"""
 SELECT
   COUNT(*) as N,
   COUNT(DISTINCT DEC_CONF_NHS_NUMBER_CLEAN_DEID) as COUNT_DISTINCT_ID,
@@ -51,12 +53,16 @@ FROM
   {collab_database}.{preamble}_deaths
 WHERE
   -- Needed for QC
-  to_date(REG_DATE_OF_DEATH,'yyyyMMdd') <= '{study_end}'"""))
+  to_date(REG_DATE_OF_DEATH,'yyyyMMdd') <= '{study_end}'"""
+        )
+    )
 
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"""
+    display(
+        spark.sql(
+            f"""
 SELECT COUNT(DISTINCT PERSON_ID_DEID), COUNT(*) FROM (
   SELECT
     DEC_CONF_NHS_NUMBER_CLEAN_DEID as PERSON_ID_DEID,
@@ -66,12 +72,16 @@ SELECT COUNT(DISTINCT PERSON_ID_DEID), COUNT(*) FROM (
     DEC_CONF_NHS_NUMBER_CLEAN_DEID IS NOT NULL
     AND to_date(REG_DATE_OF_DEATH, 'yyyyMMdd') <= '{study_end}'
   GROUP BY PERSON_ID_DEID
-)"""))
+)"""
+        )
+    )
 
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"""
+    display(
+        spark.sql(
+            f"""
 SELECT SUM(N) - COUNT(*) AS NUMBER_OF_REPEAT_PATIENT_RECORDS_ON_SAME_DOD
 FROM (
   SELECT
@@ -93,11 +103,14 @@ FROM (
     AND to_date(a.REG_DATE_OF_DEATH, 'yyyyMMdd') = b.REG_DATE_OF_DEATH
   GROUP BY a.DEC_CONF_NHS_NUMBER_CLEAN_DEID
   HAVING COUNT(a.DEC_CONF_NHS_NUMBER_CLEAN_DEID) > 1
-)"""))
+)"""
+        )
+    )
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_deaths_to_join AS
 SELECT
   1 AS DEATH,
@@ -115,7 +128,8 @@ FROM {collab_database}.{preamble}_deaths
 WHERE
   DEC_CONF_NHS_NUMBER_CLEAN_DEID IS NOT NULL
   AND to_date(REG_DATE_OF_DEATH, 'yyyyMMdd') <= '{study_end}'
-GROUP BY PERSON_ID_DEID""")
+GROUP BY PERSON_ID_DEID"""
+)
 
 # COMMAND ----------
 
@@ -123,7 +137,8 @@ print("Joining dates and causes of death to the cohort...")
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_cohort_w_deaths AS
 SELECT
   a.*,
@@ -144,7 +159,8 @@ SELECT
   UNIQUE_COD_CODES_PRIMARY
 FROM {collab_database}.{input_table_name} a
 LEFT JOIN {preamble}_deaths_to_join b
-ON a.PERSON_ID_DEID = b.PERSON_ID_DEID""")
+ON a.PERSON_ID_DEID = b.PERSON_ID_DEID"""
+)
 
 # COMMAND ----------
 
@@ -164,4 +180,4 @@ print(f"`{output_table_name}` has {table.count()} rows and {len(table.columns)} 
 # COMMAND ----------
 
 if test:
-  display(spark.sql(f"SELECT COUNT(*) FROM {collab_database}.{output_table_name}"))
+    display(spark.sql(f"SELECT COUNT(*) FROM {collab_database}.{output_table_name}"))

@@ -16,9 +16,9 @@ unpack_config(config)
 # COMMAND ----------
 
 try:
-  test
+    test
 except:
-  test = True
+    test = True
 
 # COMMAND ----------
 
@@ -26,7 +26,8 @@ spark.sql("set spark.sql.legacy.timeParserPolicy=LEGACY")
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_deaths_to_join AS
 SELECT
   1 AS DEATH,
@@ -45,11 +46,13 @@ FROM {collab_database}.{preamble}_deaths
 WHERE
   DEC_CONF_NHS_NUMBER_CLEAN_DEID IS NOT NULL
   AND to_date(REG_DATE_OF_DEATH, 'yyyyMMdd') BETWEEN '{study_start}' AND '{study_end}'
-GROUP BY PERSON_ID_DEID""")
+GROUP BY PERSON_ID_DEID"""
+)
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_deaths_cohort AS
 SELECT
   GREATEST(0, DATEDIFF(REG_DATE_OF_DEATH, DOB) / 365.25) AS AGE,
@@ -72,11 +75,14 @@ SELECT
 FROM {preamble}_deaths_to_join a
 INNER JOIN {collab_database}.{preamble}_skinny b
 ON a.PERSON_ID_DEID = b.PERSON_ID_DEID
-WHERE (DOB IS NOT NULL AND GREATEST(0, DATEDIFF(REG_DATE_OF_DEATH, DOB) / 365.25) < 18) OR NEO_NATE_FLAG == 1""")
+WHERE (DOB IS NOT NULL AND GREATEST(0, DATEDIFF(REG_DATE_OF_DEATH, DOB) / 365.25) < 18) OR NEO_NATE_FLAG == 1"""
+)
 
 # COMMAND ----------
 
-display(spark.sql(f"""
+display(
+    spark.sql(
+        f"""
 SELECT
     DOD_VARIANT_PERIOD,
     COUNT(*) AS TOTAL_UNDER_18_DEATHS,
@@ -89,8 +95,8 @@ SELECT
     SUM(PIMS_SECONDARY_COD) AS PIMS_SECONDARY_COD
 FROM {preamble}_deaths_cohort
 GROUP BY DOD_VARIANT_PERIOD
-ORDER BY DOD_VARIANT_PERIOD"""))
+ORDER BY DOD_VARIANT_PERIOD"""
+    )
+)
 
 # COMMAND ----------
-
-

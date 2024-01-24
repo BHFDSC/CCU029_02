@@ -16,9 +16,9 @@ unpack_config(config)
 # COMMAND ----------
 
 try:
-  test
+    test
 except:
-  test = True
+    test = True
 
 # COMMAND ----------
 
@@ -36,7 +36,8 @@ print("Creating consistent and filtered version of the SGSS testing table (under
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_skinny_dob_per_person AS
 SELECT
   a.PERSON_ID_DEID,
@@ -63,8 +64,10 @@ LEFT JOIN (
   FROM {collab_database}.{preamble}_gdppr
   GROUP BY NHS_NUMBER_DEID
 ) c
-ON a.PERSON_ID_DEID = c.NHS_NUMBER_DEID""")
-spark.sql(f"""
+ON a.PERSON_ID_DEID = c.NHS_NUMBER_DEID"""
+)
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_skinny_per_person AS
 SELECT
   a.*,
@@ -85,21 +88,25 @@ FROM (
   GROUP BY PERSON_ID_DEID
 ) a
 LEFT JOIN {preamble}_skinny_dob_per_person b
-ON a.PERSON_ID_DEID = b.PERSON_ID_DEID""")
+ON a.PERSON_ID_DEID = b.PERSON_ID_DEID"""
+)
 
 # COMMAND ----------
 
-spark.sql(f"""
+spark.sql(
+    f"""
 CREATE OR REPLACE TEMP VIEW {preamble}_positive_test_dates AS
 SELECT DISTINCT
   PERSON_ID_DEID,
   Specimen_Date AS POSITIVE_TEST_DATE
 FROM {collab_database}.{preamble}_sgss
-WHERE Specimen_Date IS NOT NULL""")
+WHERE Specimen_Date IS NOT NULL"""
+)
 
 # COMMAND ----------
 
-full_cohort = spark.sql(f"""
+full_cohort = spark.sql(
+    f"""
 SELECT
   a.*,
   POSITIVE_TEST_DATE,
@@ -122,7 +129,8 @@ LEFT JOIN (
   GROUP BY LSOA_CODE_2011
 ) c
 ON a.LSOA = c.LSOA_CODE_2011
-WHERE POSITIVE_TEST_DATE <= '{study_end}'""")
+WHERE POSITIVE_TEST_DATE <= '{study_end}'"""
+)
 
 # This is study end date such that tests can be linked after, but then the infection censoring at the next step ensures infections can only begin 42 days prior
 
@@ -131,7 +139,7 @@ print(f"Creating `{output_table_name}` with study start date == {study_start}")
 full_cohort.createOrReplaceTempView(output_table_name)
 drop_table(output_table_name)
 create_table(output_table_name)
-optimise_table(output_table_name, 'PERSON_ID_DEID')
+optimise_table(output_table_name, "PERSON_ID_DEID")
 
 table = spark.sql(f"SELECT * FROM {collab_database}.{output_table_name}")
 print(f"`{output_table_name}` has {table.count()} rows and {len(table.columns)} columns.")
