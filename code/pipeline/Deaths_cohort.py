@@ -3,7 +3,7 @@ skip = "Yes" if "config" in locals() else ""
 
 # COMMAND ----------
 
-# MAGIC %run ../02/config/quiet $skip=skip
+# MAGIC %run ../config/quiet $skip=skip
 
 # COMMAND ----------
 
